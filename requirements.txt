@@ -1,0 +1,6 @@
+streamlit
+edge-tts
+gTTS
+python-docx
+pypdf
+pydub
