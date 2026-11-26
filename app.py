@@ -36,20 +36,21 @@ AMBIENT_DIR = Path("ambient")
 def make_cover_svg_data_uri(title: str, tag: str, c1: str, c2: str) -> str:
     safe_title = title.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     safe_tag = tag.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="240" height="150" viewBox="0 0 240 150">
+    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="320" height="220" viewBox="0 0 320 220">
       <defs>
         <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stop-color="{c1}"/>
           <stop offset="100%" stop-color="{c2}"/>
         </linearGradient>
       </defs>
-      <rect width="240" height="150" rx="10" fill="url(#g)"/>
-      <circle cx="208" cy="28" r="36" fill="rgba(255,255,255,0.14)"/>
-      <rect x="14" y="14" width="84" height="20" rx="10" fill="rgba(0,0,0,0.32)"/>
-      <text x="56" y="28" fill="#ffffff" font-family="Arial, sans-serif" font-size="10" font-weight="bold" text-anchor="middle">{safe_tag}</text>
-      <text x="14" y="76" fill="#ffffff" font-family="Arial, sans-serif" font-size="15" font-weight="bold">{safe_title[:18]}</text>
-      <text x="14" y="96" fill="rgba(255,255,255,0.92)" font-family="Arial, sans-serif" font-size="13.5" font-weight="bold">{safe_title[18:36]}</text>
-      <text x="14" y="132" fill="rgba(255,255,255,0.85)" font-family="Arial, sans-serif" font-size="11">schoolmini • Audio Studio</text>
+      <rect width="320" height="220" rx="14" fill="url(#g)"/>
+      <circle cx="275" cy="36" r="52" fill="rgba(255,255,255,0.14)"/>
+      <circle cx="42" cy="195" r="44" fill="rgba(0,0,0,0.18)"/>
+      <rect x="16" y="16" width="104" height="24" rx="12" fill="rgba(0,0,0,0.35)"/>
+      <text x="68" y="32" fill="#ffffff" font-family="Arial, sans-serif" font-size="11" font-weight="bold" text-anchor="middle">{safe_tag}</text>
+      <text x="16" y="96" fill="#ffffff" font-family="Arial, sans-serif" font-size="18" font-weight="bold">{safe_title[:20]}</text>
+      <text x="16" y="120" fill="rgba(255,255,255,0.95)" font-family="Arial, sans-serif" font-size="16" font-weight="bold">{safe_title[20:40]}</text>
+      <text x="16" y="192" fill="rgba(255,255,255,0.88)" font-family="Arial, sans-serif" font-size="12">schoolmini • Sách Nói</text>
     </svg>"""
     b64 = base64.b64encode(svg.encode("utf-8")).decode("ascii")
     return f"data:image/svg+xml;base64,{b64}"
@@ -224,12 +225,7 @@ def split_paragraphs(text: str) -> list[str]:
     return [p.strip() for p in text.split("\n\n") if p.strip()]
 
 
-# --- 1. TÁCH LỜI DẪN & LỜI THOẠI CHO KỂ CHUYỆN PHÂN VAI ---
 def parse_dialogue_segments(text: str) -> list[tuple[str, str]]:
-    """
-    Trả về danh sách tuple (role, segment_text) với role in {'narrator', 'character'}.
-    Nhận diện câu thoại trong dấu ngoặc kép "..." hoặc “...”.
-    """
     pattern = re.compile(r'(["“][^"”\n]{2,}["”])')
     parts = pattern.split(text)
     segments = []
@@ -246,9 +242,7 @@ def parse_dialogue_segments(text: str) -> list[tuple[str, str]]:
     return segments
 
 
-# --- 2. TẠO NHẠC NỀN KHÔNG LỜI TÍCH HỢP SẴN (WAV BYTES) ---
 def synthesize_builtin_bgm_wav(preset: str, duration_sec: float = 12.0, sample_rate: int = 22050) -> bytes:
-    """Tạo đoạn nhạc nền êm dịu 12 giây (tự lặp lại khi trộn với giọng đọc)."""
     total_samples = int(duration_sec * sample_rate)
     buf = io.BytesIO()
     with wave.open(buf, "wb") as wf:
@@ -257,22 +251,21 @@ def synthesize_builtin_bgm_wav(preset: str, duration_sec: float = 12.0, sample_r
         wf.setframerate(sample_rate)
 
         frames = bytearray()
-        # Hợp âm dịu nhẹ theo từng preset
         if "Ru ngủ" in preset:
             chords = [
-                (261.63, 329.63, 392.00),  # C major
-                (220.00, 261.63, 329.63),  # A minor
-                (174.61, 220.00, 261.63),  # F major
-                (196.00, 246.94, 293.66),  # G major
+                (261.63, 329.63, 392.00),
+                (220.00, 261.63, 329.63),
+                (174.61, 220.00, 261.63),
+                (196.00, 246.94, 293.66),
             ]
         elif "Piano ấm" in preset:
             chords = [
-                (293.66, 369.99, 440.00),  # D major
-                (246.94, 293.66, 369.99),  # B minor
-                (196.00, 246.94, 293.66),  # G major
-                (220.00, 277.18, 329.63),  # A major
+                (293.66, 369.99, 440.00),
+                (246.94, 293.66, 369.99),
+                (196.00, 246.94, 293.66),
+                (220.00, 277.18, 329.63),
             ]
-        else:  # Mưa đêm & Chuông gió nhẹ
+        else:
             chords = [
                 (196.00, 246.94, 392.00),
                 (164.81, 246.94, 329.63),
@@ -285,7 +278,6 @@ def synthesize_builtin_bgm_wav(preset: str, duration_sec: float = 12.0, sample_r
             t = i / sample_rate
             c_idx = min(i // chord_len, len(chords) - 1)
             local_t = (i % chord_len) / chord_len
-            # Envelope mượt đầu/cuối mỗi hợp âm để không bị tiếng lách tách
             env = math.sin(math.pi * local_t) ** 0.65
             f1, f2, f3 = chords[c_idx]
             val = (
@@ -300,7 +292,6 @@ def synthesize_builtin_bgm_wav(preset: str, duration_sec: float = 12.0, sample_r
 
 
 def mix_voice_with_bgm(voice_mp3_bytes: bytes, bgm_source: str, bgm_db_drop: int = 16) -> tuple[bytes, bool]:
-    """Trộn giọng đọc MP3 với nhạc nền bằng pydub. Trả về (audio_bytes, is_mixed)."""
     if not PYDUB_AVAILABLE or bgm_source == "Không trộn nhạc nền":
         return voice_mp3_bytes, False
 
@@ -314,13 +305,12 @@ def mix_voice_with_bgm(voice_mp3_bytes: bytes, bgm_source: str, bgm_db_drop: int
             bgm_seg = AudioSegment.from_file(io.BytesIO(wav_bytes), format="wav")
 
         bgm_seg = bgm_seg - bgm_db_drop
-        target_len = len(voice_seg) + 1800  # thêm 1.8s nhạc kết êm
+        target_len = len(voice_seg) + 1800
         if len(bgm_seg) < target_len:
             repeats = (target_len // len(bgm_seg)) + 1
             bgm_seg = bgm_seg * repeats
         bgm_seg = bgm_seg[:target_len].fade_in(600).fade_out(1400)
 
-        # Đặt giọng đọc sau 0.6s nhạc mở đầu
         mixed = bgm_seg.overlay(voice_seg, position=600)
         out_buf = io.BytesIO()
         mixed.export(out_buf, format="mp3", bitrate="128k")
@@ -329,14 +319,17 @@ def mix_voice_with_bgm(voice_mp3_bytes: bytes, bgm_source: str, bgm_db_drop: int
         return voice_mp3_bytes, False
 
 
-# --- 3. TẠO GÓC TƯƠNG TÁC CUỐI TRUYỆN ---
 def build_story_companion(title: str, text: str) -> dict:
     paras = split_paragraphs(text)
     first_p = paras[0] if paras else ""
     last_p = paras[-1] if paras else ""
     dialogues = [seg for role, seg in parse_dialogue_segments(text) if role == "character"]
 
-    summary = f"{first_p[:160].rstrip()}... Và khép lại với thông điệp: {last_p[:160].rstrip()}." if len(paras) >= 2 else first_p[:240]
+    summary = (
+        f"{first_p[:160].rstrip()}... Và khép lại với thông điệp: {last_p[:160].rstrip()}."
+        if len(paras) >= 2
+        else first_p[:240]
+    )
 
     if "Trường con" in title or "tiếng cười" in text.lower():
         lesson = "Niềm vui, sự hóm hỉnh và tinh thần gắn kết xóm giềng đôi khi còn quý giá hơn cả vật chất."
@@ -396,10 +389,10 @@ def get_ambient_tracks() -> list[Path]:
     return tracks
 
 
-# --- CALLBACKS AN TOÀN CHO SESSION STATE WIDGET ---
 def go_home_callback() -> None:
     st.session_state.active_tab = "📚 Tủ truyện"
     st.session_state["nav_radio"] = "📚 Tủ truyện"
+    st.session_state.preview_story_title = None
 
 
 def open_story_callback(title: str, content: str, para_idx: int) -> None:
@@ -408,6 +401,71 @@ def open_story_callback(title: str, content: str, para_idx: int) -> None:
     st.session_state.current_para_idx = para_idx
     st.session_state.active_tab = "📖 Đọc & Nghe"
     st.session_state["nav_radio"] = "📖 Đọc & Nghe"
+    st.session_state.preview_story_title = None
+
+
+def open_preview_callback(title: str) -> None:
+    st.session_state.preview_story_title = title
+
+
+def close_preview_callback() -> None:
+    st.session_state.preview_story_title = None
+
+
+def render_preview_body(title: str, stories_dict: dict, fav_set: set, bm_map: dict, plays_map: dict) -> None:
+    info = stories_dict.get(title, {})
+    content_str = info.get("content", "")
+    words = len(content_str.split())
+    mins = max(1, round(words / 150))
+    plays = plays_map.get(title, 0)
+    bm_idx = bm_map.get(title)
+    bm_str = f"Đoạn {bm_idx + 1}" if bm_idx is not None else "Chưa đọc dở"
+    genre = info.get("genre", "Khác")
+    cover_uri = make_cover_svg_data_uri(
+        title,
+        genre.upper(),
+        info.get("c1", "#da251d"),
+        info.get("c2", "#7f1d1d"),
+    )
+
+    st.markdown(
+        f"""
+        <div class="msg-preview-card">
+            <img class="msg-preview-banner" src="{cover_uri}" alt="{html.escape(title)}" />
+            <div class="msg-preview-title">{html.escape(title)}</div>
+            <div class="msg-preview-chips">
+                <span class="msg-chip">{html.escape(genre)}</span>
+                <span class="msg-chip">{words} từ • ~{mins} phút</span>
+                <span class="msg-chip">{plays} lượt nghe</span>
+                <span class="msg-chip">{html.escape(bm_str)}</span>
+            </div>
+            <div class="msg-preview-excerpt">{html.escape(content_str[:340])}{'...' if len(content_str) > 340 else ''}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    p_col1, p_col2, p_col3 = st.columns([1.4, 1, 1])
+    with p_col1:
+        st.button(
+            "▶️ Đọc & Nghe ngay",
+            key=f"dlg_open_{title}",
+            on_click=open_story_callback,
+            args=(title, content_str, bm_idx if bm_idx is not None else 0),
+        )
+    with p_col2:
+        fav_txt = "❤️ Bỏ thích" if title in fav_set else "🤍 Yêu thích"
+        if st.button(fav_txt, key=f"dlg_fav_{title}"):
+            toggle_favorite(title)
+            st.rerun()
+    with p_col3:
+        st.button("Đóng", key=f"dlg_close_{title}", on_click=close_preview_callback)
+
+
+if hasattr(st, "dialog"):
+    @st.dialog("🔍 Xem trước truyện")
+    def story_preview_dialog(title: str, stories_dict: dict, fav_set: set, bm_map: dict, plays_map: dict) -> None:
+        render_preview_body(title, stories_dict, fav_set, bm_map, plays_map)
 
 
 stories = load_stories()
@@ -427,6 +485,8 @@ if "reader_font_size" not in st.session_state:
     st.session_state.reader_font_size = 16
 if "current_para_idx" not in st.session_state:
     st.session_state.current_para_idx = 0
+if "preview_story_title" not in st.session_state:
+    st.session_state.preview_story_title = None
 
 st.markdown(
     """
@@ -445,7 +505,7 @@ st.markdown(
         color: #e2e8f0;
     }
 
-    /* Header mở rộng, đỏ cờ Việt Nam rực phía trên & mờ dần xuống nền tối */
+    /* Header đỏ cờ Việt Nam rực phía trên & mờ dần xuống nền tối */
     .schoolmini-hero-bg {
         position: relative;
         min-height: 195px;
@@ -459,7 +519,7 @@ st.markdown(
             #090d16 100%
         );
         border-radius: 24px 24px 0 0;
-        padding: 24px 32px 48px 32px;
+        padding: 24px 24px 48px 24px;
         margin-bottom: -168px;
         z-index: 1;
         pointer-events: none;
@@ -468,11 +528,11 @@ st.markdown(
         position: relative;
         z-index: 2;
         text-align: center;
-        padding-top: 30px;
+        padding-top: 34px;
         padding-bottom: 12px;
     }
     .schoolmini-center-title {
-        font-size: 2.15rem !important;
+        font-size: 2rem !important;
         font-weight: 800 !important;
         color: #ffffff !important;
         letter-spacing: -0.025em;
@@ -480,7 +540,7 @@ st.markdown(
         text-shadow: 0 3px 14px rgba(0, 0, 0, 0.45);
     }
     .schoolmini-center-sub {
-        font-size: 1rem !important;
+        font-size: 0.96rem !important;
         font-weight: 500 !important;
         color: #fff5f5 !important;
         opacity: 0.96;
@@ -488,13 +548,12 @@ st.markdown(
         text-shadow: 0 1px 8px rgba(0, 0, 0, 0.45);
     }
 
-    /* Nút schoolmini nằm bên trong góc trên trái header, rõ nét, không viền, phông chữ to kiểu Waka */
     .st-key-brand_home_btn {
         position: relative;
         z-index: 25 !important;
         display: inline-block !important;
         width: auto !important;
-        margin-left: 24px !important;
+        margin-left: 18px !important;
         margin-top: 8px !important;
         margin-bottom: 105px !important;
     }
@@ -510,7 +569,7 @@ st.markdown(
         min-height: 0 !important;
         opacity: 1 !important;
         color: #fde047 !important;
-        font-size: 2.05rem !important;
+        font-size: 1.95rem !important;
         font-weight: 800 !important;
         line-height: 1.15 !important;
         letter-spacing: -0.03em !important;
@@ -521,11 +580,8 @@ st.markdown(
     .st-key-brand_home_btn > button:hover,
     .st-key-brand_home_btn button[kind="secondary"]:hover {
         background: transparent !important;
-        background-color: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
         color: #ffffff !important;
-        transform: translateX(3px) !important;
+        transform: translateX(2px) !important;
     }
     .st-key-brand_home_btn > button p,
     .st-key-brand_home_btn > button span {
@@ -540,10 +596,10 @@ st.markdown(
         color: #fca5a5 !important;
         border: 1px solid rgba(248, 113, 113, 0.3);
         font-weight: 700;
-        font-size: 0.78rem;
+        font-size: 0.76rem;
         padding: 4px 12px;
         border-radius: 999px;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
     }
     div[data-testid="stVerticalBlockBorderWrapper"] {
         background-color: #111827;
@@ -562,10 +618,10 @@ st.markdown(
         background-color: #c81e1e;
         color: #ffffff !important;
         font-weight: 600;
-        font-size: 0.96rem;
+        font-size: 0.88rem;
         border: none;
         border-radius: 10px;
-        padding: 0.52rem 1rem;
+        padding: 0.45rem 0.65rem;
         width: 100%;
         transition: background-color 0.2s ease, transform 0.15s ease;
     }
@@ -574,112 +630,114 @@ st.markdown(
         color: #ffffff !important;
     }
 
-    /* Thẻ hình chữ nhật thu gọn chỉ hiện tên -> rê chuột vào kéo ngang mở rộng */
-    .waka-rect-track {
-        display: flex;
-        align-items: stretch;
-        width: 100%;
-        min-height: 54px;
-        background: #141d2e;
+    /* Thẻ truyện dạng dọc gọn đẹp trên cả điện thoại & máy tính */
+    .story-v-card {
+        background: linear-gradient(180deg, #162033 0%, #101726 100%);
         border: 1px solid #26354d;
-        border-radius: 14px;
-        overflow: hidden;
+        border-radius: 16px;
+        padding: 10px;
         margin-bottom: 8px;
-        transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+        transition: transform 0.2s ease, border-color 0.2s ease;
     }
-    .waka-rect-track:hover {
-        background: #18243a;
+    .story-v-card:active {
+        transform: scale(0.98);
         border-color: #da251d;
-        box-shadow: 0 8px 22px rgba(218, 37, 29, 0.22);
     }
-    .waka-rect-spine {
-        min-width: 240px;
-        max-width: 280px;
-        padding: 14px 16px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        background: linear-gradient(90deg, #131c2e 0%, #172238 100%);
-        border-right: 1px solid #26354d;
-        flex-shrink: 0;
-        transition: min-width 0.35s cubic-bezier(0.22, 1, 0.36, 1), background 0.25s ease;
+    .story-v-img {
+        width: 100%;
+        aspect-ratio: 4 / 3;
+        object-fit: cover;
+        border-radius: 11px;
+        display: block;
+        margin-bottom: 9px;
     }
-    .waka-rect-track:hover .waka-rect-spine {
-        min-width: 210px;
-        background: linear-gradient(90deg, #7f1d1d 0%, #450a0a 100%);
+    .story-v-genre {
+        display: inline-block;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: #fca5a5 !important;
+        background: rgba(218, 37, 29, 0.18);
+        border: 1px solid rgba(248, 113, 113, 0.25);
+        padding: 2px 8px;
+        border-radius: 999px;
+        margin-bottom: 5px;
     }
-    .waka-rect-title {
-        font-size: 1.04rem;
+    .story-v-title {
+        font-size: 0.98rem;
         font-weight: 700;
         color: #f8fafc !important;
-        line-height: 1.35;
-    }
-    .waka-rect-arrow {
-        font-size: 0.8rem;
-        color: #94a3b8 !important;
-        white-space: nowrap;
-        transition: transform 0.3s ease, color 0.25s ease;
-    }
-    .waka-rect-track:hover .waka-rect-arrow {
-        transform: translateX(4px);
-        color: #fde047 !important;
-    }
-    .waka-rect-drawer {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        max-width: 0;
-        opacity: 0;
-        padding: 0;
-        transform: translateX(-24px);
+        line-height: 1.3;
+        min-height: 2.55em;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
         overflow: hidden;
-        transition:
-            max-width 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-            opacity 0.3s ease,
-            padding 0.35s ease,
-            transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
-    }
-    .waka-rect-track:hover .waka-rect-drawer {
-        max-width: 760px;
-        opacity: 1;
-        padding: 10px 14px;
-        transform: translateX(0);
-    }
-    .waka-rect-thumb {
-        width: 118px;
-        height: 74px;
-        object-fit: cover;
-        border-radius: 8px;
-        flex-shrink: 0;
-        border: 1px solid rgba(255, 255, 255, 0.14);
-    }
-    .waka-rect-info {
-        min-width: 240px;
-    }
-    .waka-rect-meta {
-        font-size: 0.84rem;
-        color: #fca5a5 !important;
         margin-bottom: 4px;
-        font-weight: 600;
     }
-    .waka-rect-desc {
-        font-size: 0.88rem;
-        color: #cbd5e1 !important;
-        line-height: 1.45;
+    .story-v-meta {
+        font-size: 0.76rem;
+        color: #94a3b8 !important;
+    }
+
+    /* Khung xem trước phóng to kiểu Messenger */
+    .msg-preview-card {
+        background: #0f172a;
+        border: 1px solid #334155;
+        border-radius: 18px;
+        padding: 14px;
+        margin-bottom: 12px;
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.65);
+    }
+    .msg-preview-banner {
+        width: 100%;
+        max-height: 190px;
+        object-fit: cover;
+        border-radius: 12px;
+        margin-bottom: 12px;
+        display: block;
+    }
+    .msg-preview-title {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: #ffffff !important;
+        margin-bottom: 8px;
+    }
+    .msg-preview-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 10px;
+    }
+    .msg-chip {
+        font-size: 0.76rem;
+        font-weight: 600;
+        color: #fde047 !important;
+        background: rgba(218, 37, 29, 0.22);
+        border: 1px solid rgba(253, 224, 71, 0.25);
+        padding: 3px 9px;
+        border-radius: 999px;
+    }
+    .msg-preview-excerpt {
+        font-size: 0.9rem;
+        line-height: 1.55;
+        color: #e2e8f0 !important;
+        background: #162033;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border-left: 3px solid #da251d;
     }
 </style>
 """,
     unsafe_allow_html=True,
 )
 
-# --- HEADER MỞ RỘNG VỚI DÒNG CHỮ Ở GIỮA & NÚT SCHOOLMINI RÕ NÉT BÊN TRÁI ---
 st.markdown(
     """
     <div class="schoolmini-hero-bg">
         <div class="schoolmini-center-box">
             <div class="schoolmini-center-title">Thư viện sách của Trường con</div>
-            <p class="schoolmini-center-sub">Nền tảng Sách nói Phân vai &amp; Podcast Kể chuyện AI — mượt mà trên cả máy tính và điện thoại.</p>
+            <p class="schoolmini-center-sub">Sách nói Phân vai &amp; Podcast Kể chuyện AI — chạm vào thẻ để xem trước chi tiết.</p>
         </div>
     </div>
     """,
@@ -718,7 +776,7 @@ notes_map = state_data["notes"]
 if current_tab == "📚 Tủ truyện":
     with st.container(border=True):
         st.markdown(
-            '<span class="waka-badge">KHÁM PHÁ TỦ TRUYỆN (RÊ CHUỘT ĐỂ KÉO NGANG MỞ RỘNG)</span>',
+            '<span class="waka-badge">KHÁM PHÁ TỦ TRUYỆN • CHẠM XEM NHANH ĐỂ PHÓNG TO</span>',
             unsafe_allow_html=True,
         )
 
@@ -743,65 +801,69 @@ if current_tab == "📚 Tủ truyện":
             if match_q and match_genre and match_fav:
                 filtered_items.append((title, info))
 
+        # Hiển thị popup phóng to kiểu Messenger khi bấm Xem nhanh
+        preview_title = st.session_state.preview_story_title
+        if preview_title and preview_title in stories:
+            if hasattr(st, "dialog"):
+                story_preview_dialog(preview_title, stories, favorites_set, bookmarks_map, play_counts_map)
+            else:
+                with st.container(border=True):
+                    st.markdown('<span class="waka-badge">🔍 XEM TRƯỚC CHI TIẾT</span>', unsafe_allow_html=True)
+                    render_preview_body(preview_title, stories, favorites_set, bookmarks_map, play_counts_map)
+
         if not filtered_items:
             st.info("Không tìm thấy truyện phù hợp.")
         else:
-            for idx, (title, info) in enumerate(filtered_items):
-                content_str = info.get("content", "")
-                words = len(content_str.split())
-                mins = max(1, round(words / 150))
-                plays = play_counts_map.get(title, 0)
-                bm_idx = bookmarks_map.get(title)
-                bm_str = f" • Đọc dở đoạn {bm_idx + 1}" if bm_idx is not None else ""
-                fav_icon = "❤️ " if title in favorites_set else ""
+            # Lưới thẻ dọc: 3 thẻ mỗi hàng (tự gọn 2-3 cột responsive trên điện thoại)
+            cols_per_row = 3
+            for row_start in range(0, len(filtered_items), cols_per_row):
+                row_items = filtered_items[row_start : row_start + cols_per_row]
+                grid_cols = st.columns(cols_per_row, gap="small")
+                for offset, (title, info) in enumerate(row_items):
+                    idx = row_start + offset
+                    content_str = info.get("content", "")
+                    words = len(content_str.split())
+                    mins = max(1, round(words / 150))
+                    plays = play_counts_map.get(title, 0)
+                    fav_icon = "❤️ " if title in favorites_set else ""
+                    genre_label = info.get("genre", "Khác")
 
-                excerpt = content_str.strip().splitlines()[0] if content_str.strip() else ""
-                if len(excerpt) > 130:
-                    excerpt = excerpt[:130].rstrip() + "..."
-
-                cover_uri = make_cover_svg_data_uri(
-                    title,
-                    info.get("genre", "TRUYỆN").upper(),
-                    info.get("c1", "#da251d"),
-                    info.get("c2", "#7f1d1d"),
-                )
-
-                esc_title = html.escape(title)
-                esc_genre = html.escape(info.get("genre", "Khác"))
-                esc_excerpt = html.escape(excerpt)
-
-                row_c1, row_c2, row_c3 = st.columns([4.4, 1.3, 0.9], gap="small")
-                with row_c1:
-                    st.markdown(
-                        f"""
-                        <div class="waka-rect-track">
-                            <div class="waka-rect-spine">
-                                <span class="waka-rect-title">{fav_icon}{esc_title}</span>
-                                <span class="waka-rect-arrow">Kéo ngang ▸</span>
-                            </div>
-                            <div class="waka-rect-drawer">
-                                <img class="waka-rect-thumb" src="{cover_uri}" alt="{esc_title}" />
-                                <div class="waka-rect-info">
-                                    <div class="waka-rect-meta">{esc_genre} • {words} từ • ~{mins} phút • {plays} lượt nghe{html.escape(bm_str)}</div>
-                                    <div class="waka-rect-desc">{esc_excerpt}</div>
-                                </div>
-                            </div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
+                    cover_uri = make_cover_svg_data_uri(
+                        title,
+                        genre_label.upper(),
+                        info.get("c1", "#da251d"),
+                        info.get("c2", "#7f1d1d"),
                     )
-                with row_c2:
-                    st.button(
-                        "▶️ Đọc & Nghe",
-                        key=f"open_{idx}_{title}",
-                        on_click=open_story_callback,
-                        args=(title, content_str, bookmarks_map.get(title, 0)),
-                    )
-                with row_c3:
-                    fav_label = "❤️ Thích" if title in favorites_set else "🤍 Thích"
-                    if st.button(fav_label, key=f"fav_{idx}_{title}"):
-                        toggle_favorite(title)
-                        st.rerun()
+
+                    with grid_cols[offset]:
+                        st.markdown(
+                            f"""
+                            <div class="story-v-card">
+                                <img class="story-v-img" src="{cover_uri}" alt="{html.escape(title)}" />
+                                <span class="story-v-genre">{html.escape(genre_label)}</span>
+                                <div class="story-v-title">{fav_icon}{html.escape(title)}</div>
+                                <div class="story-v-meta">~{mins} phút • {plays} nghe</div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
+                        b1, b2 = st.columns(2, gap="small")
+                        with b1:
+                            st.button(
+                                "🔍 Xem",
+                                key=f"prev_{idx}_{title}",
+                                help="Phóng to xem trước chi tiết",
+                                on_click=open_preview_callback,
+                                args=(title,),
+                            )
+                        with b2:
+                            st.button(
+                                "▶️ Đọc",
+                                key=f"open_{idx}_{title}",
+                                help="Mở khung Đọc & Nghe",
+                                on_click=open_story_callback,
+                                args=(title, content_str, bookmarks_map.get(title, 0)),
+                            )
 
     st.markdown("---")
     with st.container(border=True):
@@ -816,7 +878,7 @@ if current_tab == "📚 Tủ truyện":
                 palette = st.selectbox("Tông màu bìa:", ["Đỏ cờ - Đỏ sẫm", "Đỏ tươi - Nâu trầm", "Đỏ - Xanh lam"])
 
             new_content = st.text_area(
-                "Nội dung truyện (đặt lời thoại nhân vật trong ngoặc kép \"...\" để bật Kể chuyện phân vai tự động):",
+                'Nội dung truyện (đặt lời thoại nhân vật trong ngoặc kép "..." để bật Kể chuyện phân vai tự động):',
                 height=150,
             )
             if st.form_submit_button("💾 Lưu truyện vào tủ"):
@@ -905,7 +967,6 @@ elif current_tab == "📖 Đọc & Nghe":
                 unsafe_allow_html=True,
             )
 
-        # --- TÍNH NĂNG MỚI 3: GÓC TƯƠNG TÁC & ĐỌC CÙNG CON CUỐI TRUYỆN ---
         with st.container(border=True):
             st.markdown('<span class="waka-badge">💡 GÓC TƯƠNG TÁC &amp; ĐỌC CÙNG CON</span>', unsafe_allow_html=True)
             companion = build_story_companion(st.session_state.selected_title, st.session_state.story_text)
@@ -1018,9 +1079,8 @@ elif current_tab == "📖 Đọc & Nghe":
                     selected_slice = []
                     target_text = ""
 
-            # --- TÍNH NĂNG MỚI 1: KỂ CHUYỆN PHÂN VAI TỰ ĐỘNG ---
             multi_voice_mode = st.checkbox(
-                "🎭 Kể chuyện phân vai tự động (Tự đổi giọng khi gặp lời thoại \"...\")",
+                '🎭 Kể chuyện phân vai tự động (Tự đổi giọng khi gặp lời thoại "...")',
                 value=True,
             )
 
@@ -1073,7 +1133,6 @@ elif current_tab == "📖 Đọc & Nghe":
                 index=1,
             )
 
-            # --- TÍNH NĂNG MỚI 2: TRỘN NHẠC NỀN TỰ ĐỘNG VÀO MP3 ---
             tracks = get_ambient_tracks()
             bgm_options = [
                 "Không trộn nhạc nền",
